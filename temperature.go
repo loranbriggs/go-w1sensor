@@ -19,6 +19,10 @@ const (
 )
 
 func Temperatrue() string {
+  devices := Devices()
+  if devices == nil {
+    return "no temp sensor found"
+  }
   return ReadSensor(Devices()[0])
 }
 
@@ -26,7 +30,7 @@ func Temperatrue() string {
 func ReadSensor(s string) string {
   file, err := os.Open(BASE_DIRECTORY + "/" + s + "/" + SLAVE_FILE)
   if err != nil {
-      return "n/a"
+    return "n/a"
   }
   defer file.Close()
   scanner := bufio.NewScanner(file)
@@ -42,7 +46,10 @@ func ReadSensor(s string) string {
 
 // Returns list of Device names
 func Devices() []string {
-  filesInfo, _ := ioutil.ReadDir(BASE_DIRECTORY)
+  filesInfo, err := ioutil.ReadDir(BASE_DIRECTORY)
+  if err != nil {
+    return nil
+  }
   names :=  make([]string, 0)
   for _, file := range filesInfo {
     if isSensor(file.Name()) {
