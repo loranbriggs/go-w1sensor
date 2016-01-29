@@ -24,7 +24,10 @@ func Temperatrue() string {
 
 // reads a sensor
 func ReadSensor(s string) string {
-  file, _ := os.Open(BASE_DIRECTORY + "/" + s + "/" + SLAVE_FILE)
+  file, err := os.Open(BASE_DIRECTORY + "/" + s + "/" + SLAVE_FILE)
+  if err != nil {
+      return "n/a"
+  }
   defer file.Close()
   scanner := bufio.NewScanner(file)
   scanner.Split(bufio.ScanLines) 
