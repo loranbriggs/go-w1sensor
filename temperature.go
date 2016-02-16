@@ -50,7 +50,7 @@ func ReadSensor(s string) float64 {
   return cel
 }
 
-// Returns list of Device names
+// Returns list of Device names found
 func Devices() []string {
   filesInfo, err := ioutil.ReadDir(BASE_DIRECTORY)
   if err != nil {
