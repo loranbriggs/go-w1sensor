@@ -5,6 +5,7 @@ package w1thermsensor
 import (
   "bufio"
   "io/ioutil"
+  "log"
   "os"
   "strings"
   "strconv"
@@ -18,28 +19,43 @@ const (
   SLAVE_FILE = "w1_slave"
 )
 
-func Temperatrue() string {
+func Temperature() float64 {
   return ReadSensor(Devices()[0])
 }
 
-// reads a sensor
-func ReadSensor(s string) string {
-  file, _ := os.Open(BASE_DIRECTORY + "/" + s + "/" + SLAVE_FILE)
+func TemperatureF() float64 {
+  cel := ReadSensor(Devices()[0])
+  fah := cel*1.8 + 32
+  return fah
+}
+
+// reads a sensor and returns degrees in celcius
+func ReadSensor(s string) float64 {
+  file, err := os.Open(BASE_DIRECTORY + "/" + s + "/" + SLAVE_FILE)
+  if err != nil {
+    log.Fatal(err)
+  }
   defer file.Close()
   scanner := bufio.NewScanner(file)
   scanner.Split(bufio.ScanLines) 
   scanner.Scan() // jump to 2nd line
   scanner.Scan() // jump to 2nd line
-  tempS := strings.Split(scanner.Text(), "=")[1]
-  temp, _ := strconv.ParseFloat(tempS, 64)
-  cel := temp/1000
-  fah := cel*1.8 + 32
-  return strconv.FormatFloat(fah, 'f', 6, 64)
+  tempString := strings.Split(scanner.Text(), "=")[1]
+  tempRaw, err := strconv.ParseFloat(tempString, 64)
+  if err != nil {
+    log.Fatal(err)
+  }
+  cel := tempRaw/1000
+  //return strconv.FormatFloat(fah, 'f', 6, 64)
+  return cel
 }
 
 // Returns list of Device names
 func Devices() []string {
-  filesInfo, _ := ioutil.ReadDir(BASE_DIRECTORY)
+  filesInfo, err := ioutil.ReadDir(BASE_DIRECTORY)
+  if err != nil {
+    log.Fatal(err)
+  }
   names :=  make([]string, 0)
   for _, file := range filesInfo {
     if isSensor(file.Name()) {
