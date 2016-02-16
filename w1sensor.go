@@ -1,6 +1,6 @@
-// Pacakge w1thermsensor contains functons for reading the temperature from a
+// Pacakge w1sensor contains functons for reading the temperature from a
 // one wire sensor suchs as the DS18B20 1-wire sensor.
-package w1thermsensor
+package w1sensor
 
 import (
   "bufio"
@@ -56,7 +56,7 @@ func Devices() []string {
   if err != nil {
     log.Fatal(err)
   }
-  names :=  make([]string, 0)
+  names := make([]string, 0)
   for _, file := range filesInfo {
     if isSensor(file.Name()) {
       names = append(names, file.Name())
