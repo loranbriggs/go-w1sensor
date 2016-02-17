@@ -3,10 +3,11 @@
 package w1sensor
 
 import (
-  "bufio"
+  "errors"
+  "fmt"
   "io/ioutil"
-  "log"
   "os"
+  "regexp"
   "strings"
   "strconv"
 )
@@ -19,50 +20,80 @@ const (
   SLAVE_FILE = "w1_slave"
 )
 
-func Temperature() float64 {
-  return ReadSensor(Devices()[0])
+var (
+  tempRegExp = regexp.MustCompile(`t=\d+`) // looking for `t=` followed by one or more digits
+)
+
+type Sensor struct {
+  name string
+  filePath string
 }
 
-func TemperatureF() float64 {
-  cel := ReadSensor(Devices()[0])
-  fah := cel*1.8 + 32
-  return fah
+func FirstAvailableSensor() (*Sensor, error) {
+  sensors, err := AvailableSensors()
+  if err != nil {
+    return nil, err
+  }
+  if sensors != nil {
+    return &sensors[0], nil
+  }
+  return nil, errors.New("found no sensor")
 }
 
-// reads a sensor and returns degrees in celcius
-func ReadSensor(s string) float64 {
-  file, err := os.Open(BASE_DIRECTORY + "/" + s + "/" + SLAVE_FILE)
+func AvailableSensors() ([]Sensor, error) {
+  subDirectories, err := ioutil.ReadDir(BASE_DIRECTORY)
   if err != nil {
-    log.Fatal(err)
+    return nil, err
   }
-  defer file.Close()
-  scanner := bufio.NewScanner(file)
-  scanner.Split(bufio.ScanLines) 
-  scanner.Scan() // jump to 2nd line
-  scanner.Scan() // jump to 2nd line
-  tempString := strings.Split(scanner.Text(), "=")[1]
-  tempRaw, err := strconv.ParseFloat(tempString, 64)
-  if err != nil {
-    log.Fatal(err)
-  }
-  cel := tempRaw/1000
-  //return strconv.FormatFloat(fah, 'f', 6, 64)
-  return cel
-}
-
-// Returns list of Device names found
-func Devices() []string {
-  filesInfo, err := ioutil.ReadDir(BASE_DIRECTORY)
-  if err != nil {
-    log.Fatal(err)
-  }
-  names := make([]string, 0)
-  for _, file := range filesInfo {
-    if isSensor(file.Name()) {
-      names = append(names, file.Name())
+  sensors := make([]Sensor, 0)
+  for _, dir := range subDirectories {
+    name := dir.Name()
+    if isSensor(name) {
+      path := fmt.Sprintf("%s/%s/%s", BASE_DIRECTORY, name, SLAVE_FILE)
+      sensor := Sensor{
+        name: name,
+        filePath: path,
+      }
+      sensors = append(sensors, sensor)
     }
   }
-  return names
+  return sensors, nil
+}
+
+// Returns the reading in celsius
+func (s *Sensor) Read() (float64, error) {
+  file, err := os.Open(s.filePath)
+  if err != nil {
+    return 0, err
+  }
+
+  bytes, err := ioutil.ReadAll(file)
+  if err != nil {
+    return 0, err
+  }
+
+  rawData := tempRegExp.FindString(string(bytes[:]))
+  if rawData == "" {
+    return 0, errors.New("Reading not found")
+  }
+  split := strings.Split(rawData, "=")
+  file.Close()
+  tempRaw, err := strconv.ParseFloat(split[1], 64)
+  if err != nil {
+    return 0, err
+  }
+  cel := tempRaw/1000
+  return cel, nil
+}
+
+// Returns the reading in fah
+func (s *Sensor) ReadF() (float64, error) {
+  cel, err := s.Read()
+  if err != nil {
+    return 0, err
+  }
+  fah := cel*1.8 + 32
+  return fah, nil
 }
 
 // Returns true if the string's prefix matches a sensor name
